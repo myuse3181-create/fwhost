@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Currency Converter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  h1 { font-size: 22px; margin-bottom: 24px; color: #1a1a2e; }
+  label { font-size: 13px; color: #555; font-weight: 600; display: block; margin-bottom: 6px; }
+  input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border 0.2s;
+  }
+  input:focus, select:focus { border-color: #667eea; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button {
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover { background: #5568d3; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  .result {
+    margin-top: 24px;
+    padding: 20px;
+    background: #f5f6ff;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a2e;
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .rate-info { font-size: 12px; color: #888; text-align: center; margin-top: 12px; }
+  .error { color: #e53e3e; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>💱 Currency Converter</h1>
+
+    <label for="amount">Amount</label>
+    <input type="number" id="amount" value="100" min="0">
+
+    <div class="row">
+      <div>
+        <label for="from">From</label>
+        <select id="from"></select>
+      </div>
+      <div>
+        <label for="to">To</label>
+        <select id="to"></select>
+      </div>
+    </div>
+
+    <button id="convertBtn" onclick="convert()">Convert</button>
+    <div class="result" id="result">Enter an amount</div>
+    <div class="rate-info" id="rateInfo"></div>
+  </div>
+
+<script>
+const currencies = [
+  "USD","EUR","GBP","BDT","INR","JPY","AUD","CAD","CHF","CNY",
+  "SGD","MYR","AED","SAR","PKR","NPR","LKR","THB","IDR","PHP",
+  "KRW","ZAR","BRL","MXN","NZD","SEK","NOK","DKK","PLN","TRY"
+];
+
+const fromSel = document.getElementById("from");
+const toSel   = document.getElementById("to");
+const result  = document.getElementById("result");
+const rateInfo = document.getElementById("rateInfo");
+
+currencies.forEach(c => {
+  fromSel.innerHTML += `<option value="${c}">${c}</option>`;
+  toSel.innerHTML   += `<option value="${c}">${c}</option>`;
+});
+fromSel.value = "USD";
+toSel.value   = "BDT";
+
+async function convert() {
+  const amount = parseFloat(document.getElementById("amount").value);
+  const from = fromSel.value;
+  const to   = toSel.value;
+  const btn  = document.getElementById("convertBtn");
+
+  if (isNaN(amount) || amount < 0) {
+    result.innerHTML = `<span class="error">Enter a valid amount</span>`;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Converting…";
+  result.textContent = "…";
+  rateInfo.textContent = "";
+
+  try {
+    const res = await fetch(`https://open.er-api.com/v6/latest/${from}`);
+    if (!res.ok) throw new Error("Network error");
+    const data = await res.json();
+
+    if (data.result !== "success") throw new Error("API error");
+
+    const rate = data.rates[to];
+    if (!rate) throw new Error("Currency not supported");
+
+    const converted = (amount * rate).toFixed(2);
+    result.textContent = `${amount.toLocaleString()} ${from} = ${Number(converted).toLocaleString()} ${to}`;
+    rateInfo.textContent = `1 ${from} = ${rate.toFixed(4)} ${to} · Updated: ${new Date(data.time_last_update_unix * 1000).toLocaleDateString()}`;
+  } catch (err) {
+    result.innerHTML = `<span class="error">Could not fetch rates. Check your internet.</span>`;
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Convert";
+  }
+}
+
+// Auto-convert on load
+convert();
+</script>
+</body>
+</html>
